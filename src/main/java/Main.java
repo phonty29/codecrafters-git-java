@@ -1,4 +1,5 @@
 import executors.CatFile;
+import executors.HashObject;
 import executors.Init;
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +19,7 @@ public class Main {
      switch (command) {
        case "init" -> new Init().execute();
        case "cat-file" -> new CatFile(args).execute();
+       case "hash-object" -> new HashObject(args).execute();
        default -> System.out.println("Unknown command: " + command);
      }
   }

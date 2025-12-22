@@ -18,7 +18,6 @@ public class CatFile implements Executor {
     if (params.length < 3) {
       throw new IllegalArgumentException("Few command line arguments for `cat-file`");
     }
-    final String parameter = params[1];
     final String hash = params[2];
     if (hash.length() != 40) {
       throw new IllegalArgumentException("Hash length must be 40 characters");

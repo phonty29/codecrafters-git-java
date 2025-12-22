@@ -2,6 +2,7 @@ package utils;
 
 import java.io.ByteArrayOutputStream;
 import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ZlibDecompress {
@@ -22,4 +23,20 @@ public class ZlibDecompress {
     return out.toByteArray();
   }
 
+  public static byte[] compress(byte[] input) {
+    Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION); // zlib header
+    deflater.setInput(input);
+    deflater.finish();
+
+    byte[] buffer = new byte[4096];
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+    while (!deflater.finished()) {
+      int count = deflater.deflate(buffer);
+      out.write(buffer, 0, count);
+    }
+
+    deflater.end();
+    return out.toByteArray();
+  }
 }
