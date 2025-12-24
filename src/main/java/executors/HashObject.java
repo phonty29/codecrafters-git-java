@@ -1,14 +1,10 @@
 package executors;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.stream.Stream;
-import java.util.zip.DataFormatException;
 import utils.Sha1;
 import utils.ZlibDecompress;
 
@@ -22,7 +18,7 @@ public class HashObject implements Executor {
   @Override
   public void execute() {
     if (params.length < 3) {
-      throw new IllegalArgumentException("Few command line arguments for `cat-file`");
+      throw new IllegalArgumentException("Few command line arguments for `hash-object`");
     }
     final String readPath = params[2];
     try {
