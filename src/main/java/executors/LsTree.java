@@ -1,16 +1,12 @@
 package executors;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.zip.DataFormatException;
-import struct.GitObject;
-import struct.GitObject.FileType;
+import struct.TreeObject;
+import struct.Mode;
 import utils.ByteUtils;
 import utils.ZlibDecompress;
 
@@ -39,14 +35,14 @@ public class LsTree implements Executor {
       byte[] bytes = Files.readAllBytes(Path.of(path));
       byte[] decompressed = ZlibDecompress.decompress(bytes);
       List<byte[]> split = ByteUtils.split(decompressed, (byte) 0);
-      GitObject[] objects = new GitObject[split.size() - 2];
+      TreeObject[] objects = new TreeObject[split.size() - 2];
       for (int i = 1; i < split.size() - 1; i++) {
         String[] splitContent = new String(split.get(i)).split(" ");
-        FileType fileType = FileType.fromMode(splitContent[0]);
+        Mode mode = Mode.fromNumber(splitContent[0]);
         String fileName = splitContent[1];
         byte[] hashBytes = ByteUtils.subarray(split.get(i+1), 0, 20);
         String hash = ByteUtils.bytesToHex(hashBytes);
-        objects[i-1] = new GitObject(fileType, fileName, hash);
+        objects[i-1] = new TreeObject(mode, fileName, hash);
         split.set(i+1, ByteUtils.subarray(split.get(i+1), 20));
 
         System.out.println(fileName);

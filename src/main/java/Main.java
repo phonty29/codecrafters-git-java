@@ -2,6 +2,7 @@ import executors.CatFile;
 import executors.HashObject;
 import executors.Init;
 import executors.LsTree;
+import executors.WriteTree;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,6 +23,7 @@ public class Main {
        case "cat-file" -> new CatFile(args).execute();
        case "hash-object" -> new HashObject(args).execute();
        case "ls-tree" -> new LsTree(args).execute();
+       case "write-tree" -> new WriteTree().execute();
        default -> System.out.println("Unknown command: " + command);
      }
   }
