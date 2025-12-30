@@ -12,10 +12,6 @@ public enum Mode {
     this.mode = mode;
   }
 
-  public String value() {
-    return mode;
-  }
-
   public static Mode fromNumber(String mode) {
     for (Mode ft : Mode.values()) {
       if (ft.value().equals(mode)) {
@@ -24,5 +20,9 @@ public enum Mode {
     }
 
     throw new IllegalArgumentException("Unknown mode " + mode);
+  }
+
+  public String value() {
+    return mode;
   }
 }

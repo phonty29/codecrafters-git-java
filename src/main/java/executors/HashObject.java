@@ -6,6 +6,7 @@ import java.util.HexFormat;
 import utils.GitUtils;
 
 public class HashObject implements Executor {
+
   private final String[] params;
 
   public HashObject(String... params) {

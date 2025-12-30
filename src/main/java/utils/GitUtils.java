@@ -67,20 +67,24 @@ public class GitUtils {
           return;
         }
         if (Files.isDirectory(entry)) {
-          byteOutStream.write(String.format("%s %s\0", Mode.DIRECTORY.value(), entry.getFileName()).getBytes(
-              StandardCharsets.UTF_8));
+          byteOutStream.write(
+              String.format("%s %s\0", Mode.DIRECTORY.value(), entry.getFileName()).getBytes(
+                  StandardCharsets.UTF_8));
           byteOutStream.write(createTree(entry));
         } else if (Files.isRegularFile(entry)) {
-          byteOutStream.write(String.format("%s %s\0", Mode.REGULAR_FILE.value(), entry.getFileName()).getBytes(
-              StandardCharsets.UTF_8));
+          byteOutStream.write(
+              String.format("%s %s\0", Mode.REGULAR_FILE.value(), entry.getFileName()).getBytes(
+                  StandardCharsets.UTF_8));
           byteOutStream.write(createBlob(entry));
         } else if (Files.isSymbolicLink(entry)) {
-          byteOutStream.write(String.format("%s %s\0", Mode.SYMLINK.value(), entry.getFileName()).getBytes(
-              StandardCharsets.UTF_8));
+          byteOutStream.write(
+              String.format("%s %s\0", Mode.SYMLINK.value(), entry.getFileName()).getBytes(
+                  StandardCharsets.UTF_8));
           byteOutStream.write(createBlob(entry));
         } else if (Files.isExecutable(entry)) {
-          byteOutStream.write(String.format("%s %s\0", Mode.EXECUTABLE_FILE.value(), entry.getFileName()).getBytes(
-              StandardCharsets.UTF_8));
+          byteOutStream.write(
+              String.format("%s %s\0", Mode.EXECUTABLE_FILE.value(), entry.getFileName()).getBytes(
+                  StandardCharsets.UTF_8));
           byteOutStream.write(createBlob(entry));
         }
       } catch (IOException e) {
@@ -88,7 +92,8 @@ public class GitUtils {
       }
     });
     byte[] treeContent = byteOutStream.toByteArray();
-    byte[] treePrefix = String.format("tree %s\0", treeContent.length).getBytes(StandardCharsets.UTF_8);
+    byte[] treePrefix = String.format("tree %s\0", treeContent.length)
+        .getBytes(StandardCharsets.UTF_8);
     byte[] tree = ByteBuffer.allocate(treePrefix.length + treeContent.length)
         .put(treePrefix)
         .put(treeContent)

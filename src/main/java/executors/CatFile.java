@@ -7,6 +7,7 @@ import java.util.zip.DataFormatException;
 import utils.ZlibDecompress;
 
 public class CatFile implements Executor {
+
   private final String[] params;
 
   public CatFile(String... params) {
@@ -29,7 +30,7 @@ public class CatFile implements Executor {
     try {
       var bytes = Files.readAllBytes(Path.of(path));
       var output = new String(ZlibDecompress.decompress(bytes));
-      output = output.substring(output.indexOf('\0')+1);
+      output = output.substring(output.indexOf('\0') + 1);
       System.out.print(output);
     } catch (IOException | DataFormatException e) {
       throw new RuntimeException(e.getMessage());

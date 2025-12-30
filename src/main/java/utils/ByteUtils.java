@@ -6,6 +6,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 public class ByteUtils {
+
   public static String bytesToHex(byte[] bytes) {
     return HexFormat.of().formatHex(bytes);
   }
