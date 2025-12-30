@@ -22,7 +22,6 @@ public class LsTree implements Executor {
     if (params.length < 2) {
       throw new IllegalArgumentException("Few command line arguments for `ls-tree`");
     }
-    final String nameOnly = params[1];
     final String treeHash = params[2];
     if (treeHash.length() != 40) {
       throw new IllegalArgumentException("Hash length must be 40 characters");
@@ -44,7 +43,6 @@ public class LsTree implements Executor {
         String hash = ByteUtils.bytesToHex(hashBytes);
         objects[i-1] = new TreeObject(mode, fileName, hash);
         split.set(i+1, ByteUtils.subarray(split.get(i+1), 20));
-
         System.out.println(fileName);
       }
     } catch (IOException | DataFormatException e) {
