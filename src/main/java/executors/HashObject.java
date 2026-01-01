@@ -20,8 +20,8 @@ public class HashObject implements Executor {
     }
     final String readPath = params[2];
     try {
-      byte[] sha1Hash = GitUtils.createBlob(Paths.get(readPath));
-      System.out.println(HexFormat.of().formatHex(sha1Hash));
+      byte[] sha1 = GitUtils.createBlob(Paths.get(readPath));
+      System.out.println(HexFormat.of().formatHex(sha1));
     } catch (IOException ex) {
       System.err.println(ex.getMessage());
     }

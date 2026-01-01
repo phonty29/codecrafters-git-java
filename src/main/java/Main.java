@@ -1,4 +1,5 @@
 import executors.CatFile;
+import executors.CommitTree;
 import executors.HashObject;
 import executors.Init;
 import executors.LsTree;
@@ -18,6 +19,7 @@ public class Main {
       case "hash-object" -> new HashObject(args).execute();
       case "ls-tree" -> new LsTree(args).execute();
       case "write-tree" -> new WriteTree().execute();
+      case "commit-tree" -> new CommitTree(args).execute();
       default -> System.out.println("Unknown command: " + command);
     }
   }

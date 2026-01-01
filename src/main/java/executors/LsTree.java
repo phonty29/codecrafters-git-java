@@ -23,13 +23,13 @@ public class LsTree implements Executor {
     if (params.length < 2) {
       throw new IllegalArgumentException("Few command line arguments for `ls-tree`");
     }
-    final String treeHash = params[2];
-    if (treeHash.length() != 40) {
+    final String treeSha1 = params[2];
+    if (treeSha1.length() != 40) {
       throw new IllegalArgumentException("Hash length must be 40 characters");
     }
 
-    String objectDir = treeHash.substring(0, 2);
-    String objectFile = treeHash.substring(2);
+    String objectDir = treeSha1.substring(0, 2);
+    String objectFile = treeSha1.substring(2);
     String path = ".git/objects/" + objectDir + "/" + objectFile;
     try {
       byte[] bytes = Files.readAllBytes(Path.of(path));

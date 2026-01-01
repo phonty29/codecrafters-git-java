@@ -19,13 +19,13 @@ public class CatFile implements Executor {
     if (params.length < 3) {
       throw new IllegalArgumentException("Few command line arguments for `cat-file`");
     }
-    final String hash = params[2];
-    if (hash.length() != 40) {
+    final String sha1 = params[2];
+    if (sha1.length() != 40) {
       throw new IllegalArgumentException("Hash length must be 40 characters");
     }
 
-    String objectDir = hash.substring(0, 2);
-    String objectFile = hash.substring(2);
+    String objectDir = sha1.substring(0, 2);
+    String objectFile = sha1.substring(2);
     String path = ".git/objects/" + objectDir + "/" + objectFile;
     try {
       var bytes = Files.readAllBytes(Path.of(path));
