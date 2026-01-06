@@ -1,5 +1,6 @@
 package utils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class PktUtils {
@@ -7,7 +8,7 @@ public class PktUtils {
   public static String PKT_FLUSH = "0000";
   public static String HEAD = "HEAD";
 
-  public static String getHeadShaFromPktText(String pktText) {
+  public static String retrieveHeadShaFromPktFormattedRefs(String pktText) {
     if (Objects.isNull(pktText) || pktText.isEmpty()) {
       throw new IllegalArgumentException("pkt text is null or empty");
     }
@@ -37,4 +38,16 @@ public class PktUtils {
     throw new IllegalArgumentException("pkt text doesn't contain sha for HEAD");
   }
 
+  public static byte[] createPktNegotiationPayload(String headSha) {
+    String wantPktLine = pktLine("want " + headSha + " ofs-delta\n");
+    String donePktLine = pktLine("done\n");
+    String negotiationPayload = wantPktLine + PKT_FLUSH + donePktLine;
+    System.out.println(negotiationPayload);
+    return negotiationPayload.getBytes();
+  }
+
+  public static String pktLine(String content) {
+    int length = content.length() + PKT_LINE_SIZE_HEADER;
+    return String.format("%04X", length) + content;
+  }
 }

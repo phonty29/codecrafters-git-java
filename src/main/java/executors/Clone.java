@@ -24,9 +24,12 @@ public class Clone {
     try {
       Path absolutePath = Files.createDirectory(Paths.get(gitDir));
       new Init(absolutePath).execute();
-      String refAdvertisement = new GitClient(repoUrl).getRemoteRefs();
-      String headSha = PktUtils.getHeadShaFromPktText(refAdvertisement);
-      System.out.println("sha = " + headSha);
+      var gitClient = new GitClient(repoUrl);
+      String refAdvertisement = gitClient.getRemoteRefs();
+      String headSha = PktUtils.retrieveHeadShaFromPktFormattedRefs(refAdvertisement);
+      byte[] negotiationPayload = PktUtils.createPktNegotiationPayload(headSha);
+      gitClient.getPackFile(negotiationPayload);
+
     } catch (IOException e) {
       System.err.println(e.getMessage());
     }

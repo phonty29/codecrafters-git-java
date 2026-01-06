@@ -6,7 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.util.List;
+import java.util.Arrays;
 
 public class GitClient {
   private final String repoUrl;
@@ -17,18 +17,36 @@ public class GitClient {
 
   public String getRemoteRefs() throws IOException {
     try (HttpClient client = HttpClient.newHttpClient()) {
-      String REF_ADVERTISEMENT_URL = "/info/refs?service=git-upload-pack";
+      String ENDPOINT = "/info/refs?service=git-upload-pack";
       HttpRequest request = HttpRequest
           .newBuilder()
           .GET()
-          .uri(URI.create(repoUrl + REF_ADVERTISEMENT_URL))
+          .uri(URI.create(repoUrl + ENDPOINT))
           .header("Accept", "application/x-git-upload-pack-advertisement")
           .build();
       HttpResponse<String> response = client.send(request, BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response.body();
       }
-      throw new IOException("Git fetch failed");
+      throw new IOException("Git remote refs fetch failed");
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void getPackFile(byte[] negotiationPayload) throws IOException {
+    try (HttpClient client = HttpClient.newHttpClient()) {
+      String ENDPOINT = "/git-upload-pack";
+      HttpRequest request = HttpRequest
+          .newBuilder()
+          .POST(HttpRequest.BodyPublishers.ofByteArray(negotiationPayload))
+          .uri(URI.create(repoUrl + ENDPOINT))
+          .header("Content-Type", "application/x-git-upload-pack-request")
+          .build();
+      HttpResponse<byte[]> response = client.send(request, BodyHandlers.ofByteArray());
+      if (response.statusCode() == 200) {
+        System.out.println("Successfully fetched " + response.body().length + " bytes");
+      }
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
