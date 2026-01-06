@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.util.List;
 
 public class GitClient {
   private final String repoUrl;
@@ -14,13 +15,13 @@ public class GitClient {
     this.repoUrl = repoUrl;
   }
 
-  public String remoteRefAdvertisement() throws IOException {
-    String refAdvertisementUrl = "/info/refs?service=git-upload-pack";
+  public String getRemoteRefs() throws IOException {
     try (HttpClient client = HttpClient.newHttpClient()) {
+      String REF_ADVERTISEMENT_URL = "/info/refs?service=git-upload-pack";
       HttpRequest request = HttpRequest
           .newBuilder()
           .GET()
-          .uri(URI.create(repoUrl + refAdvertisementUrl))
+          .uri(URI.create(repoUrl + REF_ADVERTISEMENT_URL))
           .header("Accept", "application/x-git-upload-pack-advertisement")
           .build();
       HttpResponse<String> response = client.send(request, BodyHandlers.ofString());

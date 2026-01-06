@@ -1,11 +1,11 @@
 package executors;
 
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import client.GitClient;
+import utils.PktUtils;
 
 public class Clone {
   private final String[] args;
@@ -24,8 +24,9 @@ public class Clone {
     try {
       Path absolutePath = Files.createDirectory(Paths.get(gitDir));
       new Init(absolutePath).execute();
-      String val = new GitClient(repoUrl).remoteRefAdvertisement();
-      System.out.println(val);
+      String refAdvertisement = new GitClient(repoUrl).getRemoteRefs();
+      String headSha = PktUtils.getHeadShaFromPktText(refAdvertisement);
+      System.out.println("sha = " + headSha);
     } catch (IOException e) {
       System.err.println(e.getMessage());
     }
