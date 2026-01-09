@@ -1,6 +1,5 @@
 package utils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class PktUtils {
@@ -42,11 +41,10 @@ public class PktUtils {
     String wantPktLine = pktLine("want " + headSha + " ofs-delta\n");
     String donePktLine = pktLine("done\n");
     String negotiationPayload = wantPktLine + PKT_FLUSH + donePktLine;
-    System.out.println(negotiationPayload);
     return negotiationPayload.getBytes();
   }
 
-  public static String pktLine(String content) {
+  private static String pktLine(String content) {
     int length = content.length() + PKT_LINE_SIZE_HEADER;
     return String.format("%04X", length) + content;
   }

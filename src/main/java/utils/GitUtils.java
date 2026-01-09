@@ -100,4 +100,18 @@ public class GitUtils {
         .array();
     return createGitObject(tree);
   }
+
+  public static void processPackFile(ByteBuffer packBuffer) {
+    byte[] magicBytes = new byte[8];
+    packBuffer.get(magicBytes);
+    if (!new String(magicBytes, StandardCharsets.UTF_8).contentEquals("0008NAK\n")) {
+      throw new IllegalArgumentException("Not an initial clone");
+    }
+
+    // Read packfile header
+    packBuffer.position(packBuffer.position() + "PACK".length());
+    int version = packBuffer.getInt();
+    int objectCount = packBuffer.getInt();
+
+  }
 }
