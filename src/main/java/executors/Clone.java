@@ -7,8 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import client.GitClient;
-import utils.GitUtils;
-import utils.PktUtils;
+import utils.Git;
+import utils.Pkt;
 
 public class Clone {
   private final String[] args;
@@ -29,10 +29,10 @@ public class Clone {
       new Init(absolutePath).execute();
       var gitClient = new GitClient(repoUrl);
       String refAdvertisement = gitClient.getRemoteRefs();
-      String headSha = PktUtils.retrieveHeadShaFromPktFormattedRefs(refAdvertisement);
-      byte[] negotiationPayload = PktUtils.createPktNegotiationPayload(headSha);
+      String headSha = Pkt.retrieveHeadShaFromPktFormattedRefs(refAdvertisement);
+      byte[] negotiationPayload = Pkt.createPktNegotiationPayload(headSha);
       ByteBuffer packBuffer = gitClient.getPackFile(negotiationPayload);
-      GitUtils.processPackFile(packBuffer.asReadOnlyBuffer());
+      Git.processPackFile(packBuffer.asReadOnlyBuffer());
     } catch (IOException e) {
       System.err.println(e.getMessage());
     }

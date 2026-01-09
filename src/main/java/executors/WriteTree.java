@@ -1,6 +1,6 @@
 package executors;
 
-import static utils.GitUtils.createTree;
+import static utils.Git.createTree;
 
 import java.io.IOException;
 import java.nio.file.Path;

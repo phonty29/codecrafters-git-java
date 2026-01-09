@@ -3,7 +3,7 @@ package executors;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.HexFormat;
-import utils.GitUtils;
+import utils.Git;
 
 public class HashObject implements Executor {
 
@@ -20,7 +20,7 @@ public class HashObject implements Executor {
     }
     final String readPath = params[2];
     try {
-      byte[] sha1 = GitUtils.createBlob(Paths.get(readPath));
+      byte[] sha1 = Git.createBlob(Paths.get(readPath));
       System.out.println(HexFormat.of().formatHex(sha1));
     } catch (IOException ex) {
       System.err.println(ex.getMessage());

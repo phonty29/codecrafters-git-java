@@ -1,11 +1,15 @@
 package utils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
-public class ZlibDecompress {
+public class Zlib {
 
   public static byte[] decompress(byte[] compressed) throws DataFormatException {
     Inflater inflater = new Inflater(); // zlib header expected
@@ -21,6 +25,20 @@ public class ZlibDecompress {
 
     inflater.end();
     return out.toByteArray();
+  }
+
+  public static byte[] decompress(ByteBuffer compressed, int uncompressedSize) throws IOException {
+    InputStream bufInStream = new InputStream() {
+      @Override
+      public int read() {
+        if (compressed.hasRemaining()) {
+          return compressed.get() & 0xFF;
+        }
+        return -1;
+      }
+    };
+    InflaterInputStream inflaterInStream = new InflaterInputStream(bufInStream);
+    return inflaterInStream.readNBytes(uncompressedSize);
   }
 
   public static byte[] compress(byte[] input) {

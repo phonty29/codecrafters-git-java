@@ -12,9 +12,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.zip.Inflater;
 import struct.Mode;
 
-public class GitUtils {
+public class Git {
 
   public static byte[] createBlob(Path readPath) throws IOException {
     byte[] contentBytes = Files.readAllBytes(readPath);
@@ -32,7 +33,7 @@ public class GitUtils {
     String objectDir = hash.substring(0, 2);
     String objectFile = hash.substring(2);
     String writePath = ".git/objects/" + objectDir + "/" + objectFile;
-    byte[] compressedContent = ZlibDecompress.compress(content);
+    byte[] compressedContent = Zlib.compress(content);
 
     Path path = Paths.get(writePath);
     Path parentDir = path.getParent();
@@ -112,6 +113,27 @@ public class GitUtils {
     packBuffer.position(packBuffer.position() + "PACK".length());
     int version = packBuffer.getInt();
     int objectCount = packBuffer.getInt();
+
+    // Read packfile object entry
+    byte objectHeader = packBuffer.get();
+    System.out.println("ObjectHeader: " + objectHeader);
+    int objectType = (objectHeader >> 4) & 0b111;
+    int objectSize = objectHeader & 0b1111;
+    int shift = 4;
+    while (((objectHeader >> 7) & 0b1) != 0) {
+      objectHeader = packBuffer.get();
+      System.out.println("ObjectHeader: " + objectHeader);
+      objectSize |= (objectHeader & 0b0111_1111) << shift;
+      shift += 7;
+    }
+    System.out.println("ObjectType: " + objectType);
+    System.out.println("ObjectSize: " + objectSize);
+    try {
+      String objectContent = new String(Zlib.decompress(packBuffer, objectSize));
+      System.out.print("ObjectContent: " + objectContent);
+    } catch (IOException ex) {
+      System.err.println(ex.getMessage());
+    }
 
   }
 }
