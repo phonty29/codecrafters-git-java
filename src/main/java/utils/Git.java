@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.zip.Inflater;
 import struct.Mode;
+import struct.ObjectType;
 
 public class Git {
 
@@ -112,27 +112,33 @@ public class Git {
     // Read packfile header
     packBuffer.position(packBuffer.position() + "PACK".length());
     int version = packBuffer.getInt();
+    System.err.println("Git version: " + version);
     int objectCount = packBuffer.getInt();
 
     // Read packfile object entry
-    byte objectHeader = packBuffer.get();
-    System.out.println("ObjectHeader: " + objectHeader);
-    int objectType = (objectHeader >> 4) & 0b111;
-    int objectSize = objectHeader & 0b1111;
-    int shift = 4;
-    while (((objectHeader >> 7) & 0b1) != 0) {
-      objectHeader = packBuffer.get();
-      System.out.println("ObjectHeader: " + objectHeader);
-      objectSize |= (objectHeader & 0b0111_1111) << shift;
-      shift += 7;
-    }
-    System.out.println("ObjectType: " + objectType);
-    System.out.println("ObjectSize: " + objectSize);
-    try {
-      String objectContent = new String(Zlib.decompress(packBuffer, objectSize));
-      System.out.print("ObjectContent: " + objectContent);
-    } catch (IOException ex) {
-      System.err.println(ex.getMessage());
+    for (int i = 0; i < objectCount; i++) {
+      int objectHeader = packBuffer.get() & 0xFF;
+      System.out.println("ObjectHeader " + objectHeader);
+      int objectType = (objectHeader >> 4) & 0b111;
+      System.out.println("ObjectType: " + ObjectType.fromValue((byte) objectType));
+      int objectSize = objectHeader & 0x0F;
+      int shift = 4;
+      while ((objectHeader & 0x80) != 0) {
+        objectHeader = packBuffer.get() & 0xFF;
+        System.out.println("ObjectHeader " + objectHeader);
+        objectSize |= (objectHeader & 0b0111_1111) << shift;
+        shift += 7;
+      }
+      System.out.println("ObjectSize: " + objectSize);
+      try {
+        byte[] objectBytes = new byte[objectSize];
+        packBuffer.get(objectBytes);
+        ByteBuffer objectBuffer = ByteBuffer.wrap(objectBytes);
+        String objectContent = new String(Zlib.decompress(objectBuffer));
+        System.out.println("ObjectContent: " + objectContent);
+      } catch (IOException ex) {
+        System.err.println(ex.getMessage());
+      }
     }
 
   }

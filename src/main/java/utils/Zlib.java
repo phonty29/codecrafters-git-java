@@ -27,7 +27,7 @@ public class Zlib {
     return out.toByteArray();
   }
 
-  public static byte[] decompress(ByteBuffer compressed, int uncompressedSize) throws IOException {
+  public static byte[] decompress(ByteBuffer compressed) throws IOException {
     InputStream bufInStream = new InputStream() {
       @Override
       public int read() {
@@ -38,7 +38,7 @@ public class Zlib {
       }
     };
     InflaterInputStream inflaterInStream = new InflaterInputStream(bufInStream);
-    return inflaterInStream.readNBytes(uncompressedSize);
+    return inflaterInStream.readAllBytes();
   }
 
   public static byte[] compress(byte[] input) {
