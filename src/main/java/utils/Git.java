@@ -118,28 +118,35 @@ public class Git {
     // Read packfile object entry
     for (int i = 0; i < objectCount; i++) {
       int objectHeader = packBuffer.get() & 0xFF;
-      System.out.println("ObjectHeader " + objectHeader);
-      int objectType = (objectHeader >> 4) & 0b111;
-      System.out.println("ObjectType: " + ObjectType.fromValue((byte) objectType));
+      ObjectType objectType = ObjectType.fromValue((byte) ((objectHeader >> 4) & 0b111));
       int objectSize = objectHeader & 0x0F;
       int shift = 4;
       while ((objectHeader & 0x80) != 0) {
         objectHeader = packBuffer.get() & 0xFF;
-        System.out.println("ObjectHeader " + objectHeader);
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      System.out.println("ObjectSize: " + objectSize);
       try {
         byte[] objectBytes = new byte[objectSize];
+
         packBuffer.get(objectBytes);
         ByteBuffer objectBuffer = ByteBuffer.wrap(objectBytes);
-        String objectContent = new String(Zlib.decompress(objectBuffer));
-        System.out.println("ObjectContent: " + objectContent);
+        byte[] decompressedObjectPayload = Zlib.decompress(objectBuffer);
+        switch (objectType) {
+          case COMMIT, TAG -> System.out.println(new String(decompressedObjectPayload, StandardCharsets.UTF_8));
+        }
       } catch (IOException ex) {
         System.err.println(ex.getMessage());
       }
     }
 
+  }
+
+  private byte[] getRefDeltaHash(byte[] objectBytes) {
+    return new byte[0];
+  }
+
+  private byte[] getObsDeltaOffset(byte[] objectBytes) {
+    return new byte[0];
   }
 }
