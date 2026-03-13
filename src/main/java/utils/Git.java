@@ -10,12 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import struct.Mode;
 import struct.ObjectType;
 
 public class Git {
+  private static final Map<String, ObjectType> hashTypeMap = new HashMap<>();
 
   public static byte[] createBlob(Path readPath) throws IOException {
     byte[] contentBytes = Files.readAllBytes(readPath);
@@ -102,7 +105,7 @@ public class Git {
     return createGitObject(tree);
   }
 
-  public static void processPackFile(ByteBuffer packBuffer) {
+  public static void processPackFile(ByteBuffer packBuffer) throws IOException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
     if (!new String(magicBytes, StandardCharsets.UTF_8).contentEquals("0008NAK\n")) {
@@ -126,27 +129,36 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      try {
-        byte[] objectBytes = new byte[objectSize];
-
-        packBuffer.get(objectBytes);
-        ByteBuffer objectBuffer = ByteBuffer.wrap(objectBytes);
-        byte[] decompressedObjectPayload = Zlib.decompress(objectBuffer);
-        switch (objectType) {
-          case COMMIT, TAG -> System.out.println(new String(decompressedObjectPayload, StandardCharsets.UTF_8));
-        }
-      } catch (IOException ex) {
-        System.err.println(ex.getMessage());
-      }
+      byte[] objectPayloadBytes = processObject(objectType, packBuffer, objectSize);
     }
-
   }
 
-  private byte[] getRefDeltaHash(byte[] objectBytes) {
-    return new byte[0];
+  private static byte[] processObject(ObjectType objectType, ByteBuffer packBuffer, int objectSize) throws IOException {
+    return switch (objectType) {
+      case REF_DELTA -> processRefDeltaObject(packBuffer, objectSize);
+      case OFS_DELTA -> processObsDeltaObject(packBuffer, objectSize);
+      default -> Zlib.decompressPackObject(packBuffer);
+    };
   }
 
-  private byte[] getObsDeltaOffset(byte[] objectBytes) {
-    return new byte[0];
+  private static byte[] processRefDeltaObject(ByteBuffer packBuffer, int objectSize) throws IOException {
+    byte[] baseHashObjectBytes = new byte[20];
+    packBuffer.get(baseHashObjectBytes);
+    byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
+    // resolve ref delta object
+    return refDeltaInstructions;
+  }
+
+  private static byte[] processObsDeltaObject(ByteBuffer packBuffer, int objectSize) throws IOException {
+    byte currentByte =  packBuffer.get();
+    var offset = currentByte & 0x7f;
+
+    while ((currentByte & 0x80) != 0) {
+      currentByte = packBuffer.get();
+      offset = ((offset + 1) << 7) | (currentByte & 0x7f);
+    }
+    byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
+    // resolve ofs delta object
+    return obsDeltaInstructions;
   }
 }

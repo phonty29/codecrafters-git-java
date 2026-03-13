@@ -2,16 +2,15 @@ package utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
 
 public class Zlib {
 
-  public static byte[] decompress(byte[] compressed) throws DataFormatException {
+  public static byte[] decompressPackObject(byte[] compressed) throws DataFormatException {
     Inflater inflater = new Inflater(); // zlib header expected
     inflater.setInput(compressed);
 
@@ -27,18 +26,27 @@ public class Zlib {
     return out.toByteArray();
   }
 
-  public static byte[] decompress(ByteBuffer compressed) throws IOException {
-    InputStream bufInStream = new InputStream() {
-      @Override
-      public int read() {
-        if (compressed.hasRemaining()) {
-          return compressed.get() & 0xFF;
+  public static byte[] decompressPackObject(ByteBuffer buffer) throws IOException {
+    Inflater inflater = new Inflater();
+    inflater.setInput(buffer.array(), buffer.position(), buffer.remaining());
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    byte[] writeBuffer = new byte[4096];
+
+    while (!inflater.finished() && !inflater.needsInput()) {
+      try {
+        int count = inflater.inflate(writeBuffer);
+        if (count == 0 && inflater.needsInput()) {
+          break;
         }
-        return -1;
+
+        out.write(writeBuffer, 0, count);
+      } catch (DataFormatException e) {
+        throw new IOException(e);
       }
-    };
-    InflaterInputStream inflaterInStream = new InflaterInputStream(bufInStream);
-    return inflaterInStream.readAllBytes();
+    }
+    buffer.position(buffer.position() + inflater.getTotalIn());
+    return out.toByteArray();
   }
 
   public static byte[] compress(byte[] input) {

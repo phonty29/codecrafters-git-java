@@ -32,7 +32,7 @@ public class Clone {
       String headSha = Pkt.retrieveHeadShaFromPktFormattedRefs(refAdvertisement);
       byte[] negotiationPayload = Pkt.createPktNegotiationPayload(headSha);
       ByteBuffer packBuffer = gitClient.getPackFile(negotiationPayload);
-      Git.processPackFile(packBuffer.asReadOnlyBuffer());
+      Git.processPackFile(packBuffer);
     } catch (IOException e) {
       System.err.println(e.getMessage());
     }

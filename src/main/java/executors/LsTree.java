@@ -33,7 +33,7 @@ public class LsTree implements Executor {
     String path = ".git/objects/" + objectDir + "/" + objectFile;
     try {
       byte[] bytes = Files.readAllBytes(Path.of(path));
-      byte[] decompressed = Zlib.decompress(bytes);
+      byte[] decompressed = Zlib.decompressPackObject(bytes);
       List<byte[]> split = ByteUtils.split(decompressed, (byte) 0);
       TreeObject[] objects = new TreeObject[split.size() - 2];
       for (int i = 1; i < split.size() - 1; i++) {
