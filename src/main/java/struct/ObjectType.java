@@ -18,6 +18,15 @@ public enum ObjectType {
     return value;
   }
 
+  public String toString() {
+    return switch (this) {
+      case COMMIT -> "commit";
+      case TREE -> "tree";
+      case BLOB ->"blob";
+      default -> throw new IllegalArgumentException("Doesn't have String value " + this);
+    };
+  }
+
   public static ObjectType fromValue(byte value) {
     for (ObjectType ot : ObjectType.values()) {
       if (ot.value() == value) {

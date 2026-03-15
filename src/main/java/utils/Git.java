@@ -105,6 +105,19 @@ public class Git {
     return createGitObject(tree);
   }
 
+  static byte[] createObjectPayload(ObjectType type, byte[] content) {
+    byte[] objectHeader = String.format("%s %s\0", type.toString(), content.length).getBytes(StandardCharsets.UTF_8);
+    byte[] objectPayload = new byte[objectHeader.length + content.length];
+    System.arraycopy(objectHeader, 0, objectPayload, 0, objectHeader.length);
+    System.arraycopy(content, 0, objectPayload, objectHeader.length, content.length);
+    return objectPayload;
+  }
+
+  static byte[] saveGitObject(ObjectType type, byte[] content) throws IOException {
+    byte[] payload = createObjectPayload(type, content);
+    return createGitObject(payload);
+  }
+
   public static void processPackFile(ByteBuffer packBuffer) throws IOException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
@@ -129,15 +142,17 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      byte[] objectPayloadBytes = processObject(objectType, packBuffer, objectSize);
+      byte[] objectPayload = processObject(objectType, packBuffer, objectSize);
+      byte[] objectHash = saveGitObject(objectType, objectPayload);
     }
   }
 
   private static byte[] processObject(ObjectType objectType, ByteBuffer packBuffer, int objectSize) throws IOException {
     return switch (objectType) {
+      case COMMIT, BLOB, TREE -> Zlib.decompressPackObject(packBuffer);
       case REF_DELTA -> processRefDeltaObject(packBuffer, objectSize);
       case OFS_DELTA -> processObsDeltaObject(packBuffer, objectSize);
-      default -> Zlib.decompressPackObject(packBuffer);
+      default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
     };
   }
 
