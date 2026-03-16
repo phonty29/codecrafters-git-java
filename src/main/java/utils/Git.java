@@ -15,6 +15,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
 
@@ -107,7 +108,7 @@ public class Git {
     return createGitObject(tree);
   }
 
-  static byte[] createObjectPayload(ObjectType type, byte[] content) {
+  public static byte[] createObjectPayload(ObjectType type, byte[] content) {
     byte[] objectHeader = String.format("%s %s\0", type.toString(), content.length).getBytes(StandardCharsets.UTF_8);
     byte[] objectPayload = new byte[objectHeader.length + content.length];
     System.arraycopy(objectHeader, 0, objectPayload, 0, objectHeader.length);
@@ -118,6 +119,19 @@ public class Git {
   static byte[] saveGitObject(ObjectType type, byte[] content) throws IOException {
     byte[] payload = createObjectPayload(type, content);
     return createGitObject(payload);
+  }
+
+  public static byte[] getGitObject(byte[] hash) {
+    String sha1 = HexFormat.of().formatHex(hash);
+    String objectDir = sha1.substring(0, 2);
+    String objectFile = sha1.substring(2);
+    String path = ".git/objects/" + objectDir + "/" + objectFile;
+    try {
+      var bytes = Files.readAllBytes(Path.of(path));
+      return Zlib.decompressObject(bytes);
+    } catch (IOException | DataFormatException e) {
+      throw new RuntimeException(e.getMessage());
+    }
   }
 
   /**
