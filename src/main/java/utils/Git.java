@@ -156,24 +156,22 @@ public class Git {
     };
   }
 
-  private static byte[] processRefDeltaObject(ByteBuffer packBuffer, int objectSize) throws IOException {
+  private static byte[] processRefDeltaObject(ByteBuffer packBuffer) throws IOException {
     byte[] baseHashObjectBytes = new byte[20];
     packBuffer.get(baseHashObjectBytes);
     byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    // resolve ref delta object
-    return refDeltaInstructions;
+    return Delta.applyDelta(ObjectType.REF_DELTA, baseHashObjectBytes, refDeltaInstructions);
   }
 
-  private static byte[] processObsDeltaObject(ByteBuffer packBuffer, int objectSize) throws IOException {
+  private static byte[] processObsDeltaObject(ByteBuffer packBuffer) throws IOException {
     byte currentByte =  packBuffer.get();
-    var offset = currentByte & 0x7f;
+    int offset = currentByte & 0x7f;
 
     while ((currentByte & 0x80) != 0) {
       currentByte = packBuffer.get();
       offset = ((offset + 1) << 7) | (currentByte & 0x7f);
     }
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    // resolve ofs delta object
-    return obsDeltaInstructions;
+    return Delta.applyDelta(ObjectType.OFS_DELTA, new byte[0], obsDeltaInstructions);
   }
 }
