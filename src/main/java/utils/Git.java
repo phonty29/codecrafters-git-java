@@ -14,11 +14,13 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import struct.Mode;
 import struct.ObjectType;
 
 public class Git {
-  private static final Map<String, ObjectType> hashTypeMap = new HashMap<>();
+  private static final Map<byte[], ObjectType> hashTypeMap = new HashMap<>();
+  private static final Map<Integer, byte[]> positionObjectHashMap = new HashMap<>();
 
   public static byte[] createBlob(Path readPath) throws IOException {
     byte[] contentBytes = Files.readAllBytes(readPath);
@@ -118,7 +120,12 @@ public class Git {
     return createGitObject(payload);
   }
 
-  public static void processPackFile(ByteBuffer packBuffer) throws IOException {
+  /**
+   *
+   * @param packBuffer - remote Git packfile buffer
+   * @return (String) first commit hash
+   */
+  public static String processPackFile(ByteBuffer packBuffer) throws IOException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
     if (!new String(magicBytes, StandardCharsets.UTF_8).contentEquals("0008NAK\n")) {
@@ -130,9 +137,11 @@ public class Git {
     int version = packBuffer.getInt();
     System.err.println("Git version: " + version);
     int objectCount = packBuffer.getInt();
+    String firstCommitHash = "";
 
     // Read packfile object entry
     for (int i = 0; i < objectCount; i++) {
+      int objectStartPosition = packBuffer.position();
       int objectHeader = packBuffer.get() & 0xFF;
       ObjectType objectType = ObjectType.fromValue((byte) ((objectHeader >> 4) & 0b111));
       int objectSize = objectHeader & 0x0F;
@@ -142,16 +151,23 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      byte[] objectPayload = processObject(objectType, packBuffer, objectSize);
+      byte[] objectPayload = processObject(objectType, packBuffer);
       byte[] objectHash = saveGitObject(objectType, objectPayload);
+      positionObjectHashMap.put(objectStartPosition, objectHash);
+      hashTypeMap.put(objectHash, objectType);
+      if (firstCommitHash.isEmpty() && objectType == ObjectType.COMMIT) {
+        firstCommitHash = HexFormat.of().formatHex(objectHash);
+      }
     }
+
+    return firstCommitHash;
   }
 
-  private static byte[] processObject(ObjectType objectType, ByteBuffer packBuffer, int objectSize) throws IOException {
+  private static byte[] processObject(ObjectType objectType, ByteBuffer packBuffer) throws IOException {
     return switch (objectType) {
       case COMMIT, BLOB, TREE -> Zlib.decompressPackObject(packBuffer);
-      case REF_DELTA -> processRefDeltaObject(packBuffer, objectSize);
-      case OFS_DELTA -> processObsDeltaObject(packBuffer, objectSize);
+      case REF_DELTA -> processRefDeltaObject(packBuffer);
+      case OFS_DELTA -> processObsDeltaObject(packBuffer);
       default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
     };
   }

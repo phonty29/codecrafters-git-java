@@ -10,7 +10,7 @@ import java.util.zip.Inflater;
 
 public class Zlib {
 
-  public static byte[] decompressPackObject(byte[] compressed) throws DataFormatException {
+  public static byte[] decompressObject(byte[] compressed) throws DataFormatException {
     Inflater inflater = new Inflater(); // zlib header expected
     inflater.setInput(compressed);
 

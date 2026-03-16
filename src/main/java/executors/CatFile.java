@@ -29,7 +29,7 @@ public class CatFile implements Executor {
     String path = ".git/objects/" + objectDir + "/" + objectFile;
     try {
       var bytes = Files.readAllBytes(Path.of(path));
-      var output = new String(Zlib.decompressPackObject(bytes));
+      var output = new String(Zlib.decompressObject(bytes));
       output = output.substring(output.indexOf('\0') + 1);
       System.out.print(output);
     } catch (IOException | DataFormatException e) {
