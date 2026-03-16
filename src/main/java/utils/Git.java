@@ -151,7 +151,7 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      byte[] objectPayload = processObject(objectType, packBuffer);
+      byte[] objectPayload = processObject(objectType, objectStartPosition, packBuffer);
       byte[] objectHash = saveGitObject(objectType, objectPayload);
       positionObjectHashMap.put(objectStartPosition, objectHash);
       hashTypeMap.put(objectHash, objectType);
@@ -163,11 +163,11 @@ public class Git {
     return firstCommitHash;
   }
 
-  private static byte[] processObject(ObjectType objectType, ByteBuffer packBuffer) throws IOException {
+  private static byte[] processObject(ObjectType objectType, int startPosition, ByteBuffer packBuffer) throws IOException {
     return switch (objectType) {
       case COMMIT, BLOB, TREE -> Zlib.decompressPackObject(packBuffer);
       case REF_DELTA -> processRefDeltaObject(packBuffer);
-      case OFS_DELTA -> processObsDeltaObject(packBuffer);
+      case OFS_DELTA -> processObsDeltaObject(startPosition, packBuffer);
       default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
     };
   }
@@ -176,18 +176,22 @@ public class Git {
     byte[] baseHashObjectBytes = new byte[20];
     packBuffer.get(baseHashObjectBytes);
     byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    return Delta.applyDelta(ObjectType.REF_DELTA, baseHashObjectBytes, refDeltaInstructions);
+    ObjectType refObjectType = hashTypeMap.get(baseHashObjectBytes);
+    return Delta.applyDelta(refObjectType, baseHashObjectBytes, refDeltaInstructions);
   }
 
-  private static byte[] processObsDeltaObject(ByteBuffer packBuffer) throws IOException {
+  private static byte[] processObsDeltaObject(int startPosition, ByteBuffer packBuffer) throws IOException {
     byte currentByte =  packBuffer.get();
     int offset = currentByte & 0x7f;
-
     while ((currentByte & 0x80) != 0) {
       currentByte = packBuffer.get();
       offset = ((offset + 1) << 7) | (currentByte & 0x7f);
     }
+    int baseObjectPosition = startPosition - offset;
+    byte[] baseObjectHash = positionObjectHashMap.get(baseObjectPosition);
+    ObjectType baseObjectType = hashTypeMap.get(baseObjectHash);
+
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    return Delta.applyDelta(ObjectType.OFS_DELTA, new byte[0], obsDeltaInstructions);
+    return Delta.applyDelta(baseObjectType, baseObjectHash, obsDeltaInstructions);
   }
 }
