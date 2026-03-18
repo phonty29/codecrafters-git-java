@@ -19,7 +19,6 @@ public enum ObjectType {
   }
 
   public String toString() {
-    System.err.println("Something called with " + value);
     return switch (this) {
       case COMMIT -> "commit";
       case TREE -> "tree";
