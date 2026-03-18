@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
@@ -159,8 +160,7 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      byte[] objectPayload = processObject(objectType, objectStartPosition, packBuffer);
-      byte[] objectHash = createGitObject(objectPayload);
+      byte[] objectHash = processObject(objectType, objectStartPosition, packBuffer);
       positionObjectHashMap.put(objectStartPosition, objectHash);
       hashTypeMap.put(objectHash, objectType);
       if (firstCommitHash.length == 0 && objectType == ObjectType.COMMIT) {
@@ -173,7 +173,10 @@ public class Git {
 
   private static byte[] processObject(ObjectType objectType, int objectStartPosition, ByteBuffer packBuffer) throws IOException {
     return switch (objectType) {
-      case COMMIT, BLOB, TREE -> createObjectPayload(objectType, Zlib.decompressPackObject(packBuffer));
+      case COMMIT, BLOB, TREE -> {
+        byte[] payload = createObjectPayload(objectType, Zlib.decompressPackObject(packBuffer));
+        yield createGitObject(payload);
+      }
       case REF_DELTA -> processRefDeltaObject(packBuffer);
       case OFS_DELTA -> processObsDeltaObject(objectStartPosition, packBuffer);
       default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
@@ -188,7 +191,6 @@ public class Git {
     byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
     byte[] baseObject = getGitObject(baseObjectHash);
     byte[] baseContent = removeGitHeader(baseObject);
-    System.err.println("REF_DELTA baseObject: " + new String(baseObject, StandardCharsets.UTF_8));
     byte[] resultObject = Delta.applyDelta(baseContent, refDeltaInstructions);
     byte[] objectPayload = createObjectPayload(refObjectType, resultObject);
     return createGitObject(objectPayload);
@@ -207,7 +209,6 @@ public class Git {
 
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
     byte[] baseObject = getGitObject(baseObjectHash);
-    System.err.println("OBS_DELTA baseObject: " + new String(baseObject, StandardCharsets.UTF_8));
     byte[] baseContent = removeGitHeader(baseObject);
     byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
     byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);

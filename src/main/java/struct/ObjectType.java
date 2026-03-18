@@ -19,11 +19,12 @@ public enum ObjectType {
   }
 
   public String toString() {
+    System.err.println("Something called with " + value);
     return switch (this) {
       case COMMIT -> "commit";
       case TREE -> "tree";
       case BLOB ->"blob";
-      default -> throw new IllegalArgumentException("Doesn't have String value " + this);
+      default -> throw new IllegalArgumentException(this.name() + " doesn't have String value");
     };
   }
 
