@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
@@ -116,11 +115,6 @@ public class Git {
     return objectPayload;
   }
 
-  static byte[] saveGitObject(ObjectType type, byte[] content) throws IOException {
-    byte[] payload = createObjectPayload(type, content);
-    return createGitObject(payload);
-  }
-
   public static byte[] getGitObject(byte[] hash) {
     String sha1 = HexFormat.of().formatHex(hash);
     String objectDir = sha1.substring(0, 2);
@@ -139,7 +133,7 @@ public class Git {
    * @param packBuffer - remote Git packfile buffer
    * @return (String) first commit hash
    */
-  public static String processPackFile(ByteBuffer packBuffer) throws IOException {
+  public static byte[] processPackFile(ByteBuffer packBuffer) throws IOException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
     if (!new String(magicBytes, StandardCharsets.UTF_8).contentEquals("0008NAK\n")) {
@@ -151,7 +145,7 @@ public class Git {
     int version = packBuffer.getInt();
     System.err.println("Git version: " + version);
     int objectCount = packBuffer.getInt();
-    String firstCommitHash = "";
+    byte[] firstCommitHash = new byte[0];
 
     // Read packfile object entry
     for (int i = 0; i < objectCount; i++) {
@@ -166,32 +160,38 @@ public class Git {
         shift += 7;
       }
       byte[] objectPayload = processObject(objectType, objectStartPosition, packBuffer);
-      byte[] objectHash = saveGitObject(objectType, objectPayload);
+      byte[] objectHash = createGitObject(objectPayload);
       positionObjectHashMap.put(objectStartPosition, objectHash);
       hashTypeMap.put(objectHash, objectType);
-      if (firstCommitHash.isEmpty() && objectType == ObjectType.COMMIT) {
-        firstCommitHash = HexFormat.of().formatHex(objectHash);
+      if (firstCommitHash.length == 0 && objectType == ObjectType.COMMIT) {
+        firstCommitHash = objectHash;
       }
     }
 
     return firstCommitHash;
   }
 
-  private static byte[] processObject(ObjectType objectType, int startPosition, ByteBuffer packBuffer) throws IOException {
+  private static byte[] processObject(ObjectType objectType, int objectStartPosition, ByteBuffer packBuffer) throws IOException {
     return switch (objectType) {
-      case COMMIT, BLOB, TREE -> Zlib.decompressPackObject(packBuffer);
+      case COMMIT, BLOB, TREE -> createObjectPayload(objectType, Zlib.decompressPackObject(packBuffer));
       case REF_DELTA -> processRefDeltaObject(packBuffer);
-      case OFS_DELTA -> processObsDeltaObject(startPosition, packBuffer);
+      case OFS_DELTA -> processObsDeltaObject(objectStartPosition, packBuffer);
       default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
     };
   }
 
   private static byte[] processRefDeltaObject(ByteBuffer packBuffer) throws IOException {
-    byte[] baseHashObjectBytes = new byte[20];
-    packBuffer.get(baseHashObjectBytes);
+    byte[] baseObjectHash = new byte[20];
+    packBuffer.get(baseObjectHash);
+    ObjectType refObjectType = hashTypeMap.get(baseObjectHash);
+
     byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    ObjectType refObjectType = hashTypeMap.get(baseHashObjectBytes);
-    return Delta.applyDelta(refObjectType, baseHashObjectBytes, refDeltaInstructions);
+    byte[] baseObject = getGitObject(baseObjectHash);
+    byte[] baseContent = removeGitHeader(baseObject);
+    System.err.println("REF_DELTA baseObject: " + new String(baseObject, StandardCharsets.UTF_8));
+    byte[] resultObject = Delta.applyDelta(baseContent, refDeltaInstructions);
+    byte[] objectPayload = createObjectPayload(refObjectType, resultObject);
+    return createGitObject(objectPayload);
   }
 
   private static byte[] processObsDeltaObject(int startPosition, ByteBuffer packBuffer) throws IOException {
@@ -206,6 +206,23 @@ public class Git {
     ObjectType baseObjectType = hashTypeMap.get(baseObjectHash);
 
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    return Delta.applyDelta(baseObjectType, baseObjectHash, obsDeltaInstructions);
+    byte[] baseObject = getGitObject(baseObjectHash);
+    System.err.println("OBS_DELTA baseObject: " + new String(baseObject, StandardCharsets.UTF_8));
+    byte[] baseContent = removeGitHeader(baseObject);
+    byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
+    byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);
+    return createGitObject(objectPayload);
+  }
+
+  public static byte[] removeGitHeader(byte[] data) {
+    int i = 0;
+    while (i < data.length && data[i] != 0) {
+      i++;
+    }
+    if (i == data.length) {
+      throw new IllegalStateException("Invalid git object (no header)");
+    }
+    int contentStart = i + 1;
+    return Arrays.copyOfRange(data, contentStart, data.length);
   }
 }
