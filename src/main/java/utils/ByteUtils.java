@@ -11,6 +11,10 @@ public class ByteUtils {
     return HexFormat.of().formatHex(bytes);
   }
 
+  public static byte[] hexToBytes(String hex) {
+    return HexFormat.of().parseHex(hex);
+  }
+
   public static List<byte[]> split(byte[] data, byte delimiter) {
     List<byte[]> result = new ArrayList<>();
     int from = 0;
