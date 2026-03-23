@@ -233,7 +233,7 @@ public class Git {
     byte[] baseContent = removeGitHeader(baseObject);
     byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
     byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);
-    byte[] resultHash = createGitObject(objectPayload);
+    byte[] resultHash = createGitObject(absolutePath, objectPayload);
     positionObjectHashMap.put(objectStartPosition, resultHash);
     hashTypeMap.put(resultHash, baseObjectType);
     return resultHash;
