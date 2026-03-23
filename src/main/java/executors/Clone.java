@@ -85,28 +85,18 @@ public class Clone {
       int pos = 0;
 
       while (pos < data.length) {
-        // 1. read mode (until space)
         int space = findByte(data, pos, (byte) ' ');
         String modeStr = new String(data, pos, space - pos);
         Mode mode = Mode.fromNumber(modeStr);
-
         pos = space + 1;
-
-        // 2. read filename (until null byte)
         int nullByte = findByte(data, pos, (byte) 0);
         String fileName = new String(data, pos, nullByte - pos);
-
         pos = nullByte + 1;
-
-        // 3. read 20-byte SHA
         byte[] shaBytes = Arrays.copyOfRange(data, pos, pos + 20);
         String sha = HexFormat.of().formatHex(shaBytes);
-
         pos += 20;
-
         result.add(new TreeObject(mode, fileName, sha));
       }
-
       return result.toArray(new TreeObject[0]);
     } catch (IOException | DataFormatException e) {
       throw new RuntimeException(e.getMessage());
