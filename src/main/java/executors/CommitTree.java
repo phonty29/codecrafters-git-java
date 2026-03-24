@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 import utils.Git;
 
-public class CommitTree implements Executor{
+public class CommitTree implements Executor {
 
   private final String[] params;
 

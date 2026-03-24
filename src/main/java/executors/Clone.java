@@ -1,20 +1,16 @@
 package executors;
 
 
+import client.GitClient;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import client.GitClient;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
@@ -25,6 +21,7 @@ import utils.Pkt;
 import utils.Zlib;
 
 public class Clone {
+
   private final String[] args;
   private Path absolutePath;
 
@@ -59,13 +56,12 @@ public class Clone {
 
   private void checkoutTree(Path targetDirectory, String treeHash) throws IOException {
     TreeObject[] treeObjects = getTreeObjects(treeHash);
-    for (TreeObject entry : treeObjects) {
-      Path targetPath = targetDirectory.resolve(entry.name());
-      if (Mode.DIRECTORY.equals(entry.mode())) {
-        checkoutTree(targetPath, entry.hash());
-      }
-      else if (Mode.isBlob(entry.mode())) {
-        byte[] gitObject = Git.getGitObject(this.absolutePath, ByteUtils.hexToBytes(entry.hash()));
+    for (TreeObject(Mode mode, String name, String hash) : treeObjects) {
+      Path targetPath = targetDirectory.resolve(name);
+      if (Mode.DIRECTORY.equals(mode)) {
+        checkoutTree(targetPath, hash);
+      } else if (Mode.isBlob(mode)) {
+        byte[] gitObject = Git.getGitObject(this.absolutePath, ByteUtils.hexToBytes(hash));
         byte[] content = Git.removeGitHeader(gitObject);
         Files.createDirectories(targetDirectory);
         Files.write(targetPath, content);
@@ -105,7 +101,9 @@ public class Clone {
 
   private int findByte(byte[] data, int start, byte target) {
     for (int i = start; i < data.length; i++) {
-      if (data[i] == target) return i;
+      if (data[i] == target) {
+        return i;
+      }
     }
     throw new IllegalStateException("Byte not found");
   }

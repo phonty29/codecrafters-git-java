@@ -14,19 +14,6 @@ public enum ObjectType {
     this.value = value;
   }
 
-  public byte value() {
-    return value;
-  }
-
-  public String toString() {
-    return switch (this) {
-      case COMMIT -> "commit";
-      case TREE -> "tree";
-      case BLOB ->"blob";
-      default -> throw new IllegalArgumentException(this.name() + " doesn't have String value");
-    };
-  }
-
   public static ObjectType fromValue(byte value) {
     for (ObjectType ot : ObjectType.values()) {
       if (ot.value() == value) {
@@ -35,5 +22,18 @@ public enum ObjectType {
     }
 
     throw new IllegalArgumentException("Unknown object type: " + value);
+  }
+
+  public byte value() {
+    return value;
+  }
+
+  public String toString() {
+    return switch (this) {
+      case COMMIT -> "commit";
+      case TREE -> "tree";
+      case BLOB -> "blob";
+      default -> throw new IllegalArgumentException(this.name() + " doesn't have String value");
+    };
   }
 }

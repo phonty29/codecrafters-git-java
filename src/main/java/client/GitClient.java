@@ -9,6 +9,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.ByteBuffer;
 
 public class GitClient {
+
   private final String repoUrl;
 
   public GitClient(String repoUrl) {

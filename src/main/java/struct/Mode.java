@@ -13,7 +13,7 @@ public enum Mode {
   }
 
   public static boolean isBlob(Mode mode) {
-     return mode.equals(REGULAR_FILE) || mode.equals(EXECUTABLE_FILE) || mode.equals(SYMLINK);
+    return mode.equals(REGULAR_FILE) || mode.equals(EXECUTABLE_FILE) || mode.equals(SYMLINK);
   }
 
   public static Mode fromNumber(String mode) {

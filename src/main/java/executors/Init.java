@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Init implements Executor {
+
   private final Path path;
 
   public Init(Path path) {

@@ -3,6 +3,7 @@ package utils;
 import java.util.Objects;
 
 public class Pkt {
+
   public static int PKT_LINE_SIZE_HEADER = 4;
   public static String PKT_FLUSH = "0000";
   public static String HEAD = "HEAD";

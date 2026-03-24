@@ -24,10 +24,6 @@ public class LsTree implements Executor {
       throw new IllegalArgumentException("Few command line arguments for `ls-tree`");
     }
     final String treeSha1 = params[2];
-    if (treeSha1.length() != 40) {
-      throw new IllegalArgumentException("Hash length must be 40 characters");
-    }
-
     String objectDir = treeSha1.substring(0, 2);
     String objectFile = treeSha1.substring(2);
     String path = ".git/objects/" + objectDir + "/" + objectFile;

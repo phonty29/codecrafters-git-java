@@ -14,12 +14,12 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
 
 public class Git {
+
   private static final Map<byte[], ObjectType> hashTypeMap = new HashMap<>();
   private static final Map<Integer, byte[]> positionObjectHashMap = new HashMap<>();
 
@@ -147,7 +147,6 @@ public class Git {
   }
 
   /**
-   *
    * @param packBuffer - remote Git packfile buffer
    * @return first commit hash
    */
@@ -186,7 +185,8 @@ public class Git {
     return firstCommitHash;
   }
 
-  private static byte[] processObject(ObjectType objectType, int objectStartPosition, ByteBuffer packBuffer, Path absolutePath) throws IOException {
+  private static byte[] processObject(ObjectType objectType, int objectStartPosition, ByteBuffer packBuffer,
+      Path absolutePath) throws IOException {
     return switch (objectType) {
       case COMMIT, BLOB, TREE -> {
         byte[] payload = createObjectPayload(objectType, Zlib.decompressPackObject(packBuffer));
@@ -201,7 +201,8 @@ public class Git {
     };
   }
 
-  private static byte[] processRefDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath) throws IOException {
+  private static byte[] processRefDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath)
+      throws IOException {
     byte[] baseObjectHash = new byte[20];
     packBuffer.get(baseObjectHash);
     ObjectType refObjectType = hashTypeMap.get(baseObjectHash);
@@ -217,8 +218,9 @@ public class Git {
     return resultHash;
   }
 
-  private static byte[] processObsDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath) throws IOException {
-    byte currentByte =  packBuffer.get();
+  private static byte[] processObsDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath)
+      throws IOException {
+    byte currentByte = packBuffer.get();
     int offset = currentByte & 0x7f;
     while ((currentByte & 0x80) != 0) {
       currentByte = packBuffer.get();
