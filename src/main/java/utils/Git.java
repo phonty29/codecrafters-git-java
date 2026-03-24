@@ -17,11 +17,17 @@ import java.util.Map;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
+import struct.PackObject;
 
 public class Git {
 
-  private static final Map<byte[], ObjectType> hashTypeMap = new HashMap<>();
-  private static final Map<Integer, byte[]> positionObjectHashMap = new HashMap<>();
+  private Path root;
+  private static final Map<byte[], ObjectType> sha1TypeMap = new HashMap<>();
+  private static final Map<Integer, byte[]> offsetSha1Map = new HashMap<>();
+
+  Git(Path root) {
+    this.root = root;
+  }
 
   public static byte[] createBlob(Path readPath) throws IOException {
     byte[] contentBytes = Files.readAllBytes(readPath);
@@ -156,7 +162,6 @@ public class Git {
     // Read packfile header
     packBuffer.position(packBuffer.position() + "PACK".length());
     int version = packBuffer.getInt();
-    System.err.println("Git version: " + version);
     int objectCount = packBuffer.getInt();
     byte[] firstCommitHash = new byte[0];
 
@@ -172,7 +177,8 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      byte[] objectHash = processObject(objectType, objectStartPosition, packBuffer, absolutePath);
+      PackObject packObject = new PackObject(objectType, objectStartPosition, objectSize);
+      byte[] objectHash = processObject(packObject, packBuffer, absolutePath);
       if (firstCommitHash.length == 0 && objectType == ObjectType.COMMIT) {
         firstCommitHash = objectHash;
       }
@@ -181,40 +187,30 @@ public class Git {
     return firstCommitHash;
   }
 
-  private static byte[] processObject(ObjectType objectType, int objectStartPosition, ByteBuffer packBuffer,
+  private static byte[] processObject(PackObject packObject, ByteBuffer packBuffer,
       Path absolutePath) throws IOException {
-    return switch (objectType) {
+    return switch (packObject.type()) {
       case COMMIT, BLOB, TREE -> {
-        byte[] payload = createObjectPayload(objectType, Zlib.decompressPackObject(packBuffer));
+        byte[] payload = createObjectPayload(packObject.type(), Zlib.decompressPackObject(packBuffer));
         byte[] hash = createGitObject(absolutePath, payload);
-        positionObjectHashMap.put(objectStartPosition, hash);
-        hashTypeMap.put(hash, objectType);
+        offsetSha1Map.put(packObject.offset(), hash);
+        sha1TypeMap.put(hash, packObject.type());
         yield hash;
       }
-      case REF_DELTA -> processRefDeltaObject(objectStartPosition, packBuffer, absolutePath);
-      case OFS_DELTA -> processObsDeltaObject(objectStartPosition, packBuffer, absolutePath);
-      default -> throw new IllegalArgumentException("Object type is not supported: " + objectType);
+      case REF_DELTA -> processRefDeltaObject(packObject.offset(), packBuffer, absolutePath);
+      case OFS_DELTA -> processObsDeltaObject(packObject.offset(), packBuffer, absolutePath);
+      default -> throw new IllegalArgumentException("Object type is not supported: " + packObject.type());
     };
   }
 
-  private static byte[] processRefDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath)
+  private static byte[] processRefDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath)
       throws IOException {
     byte[] baseObjectHash = new byte[20];
     packBuffer.get(baseObjectHash);
-    ObjectType refObjectType = hashTypeMap.get(baseObjectHash);
-
-    byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
-    byte[] baseContent = removeGitHeader(baseObject);
-    byte[] resultObject = Delta.applyDelta(baseContent, refDeltaInstructions);
-    byte[] objectPayload = createObjectPayload(refObjectType, resultObject);
-    byte[] resultHash = createGitObject(objectPayload);
-    positionObjectHashMap.put(objectStartPosition, resultHash);
-    hashTypeMap.put(resultHash, refObjectType);
-    return resultHash;
+    return processDeltaObject(packObjectOffset, packBuffer, absolutePath, baseObjectHash);
   }
 
-  private static byte[] processObsDeltaObject(int objectStartPosition, ByteBuffer packBuffer, Path absolutePath)
+  private static byte[] processObsDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath)
       throws IOException {
     byte currentByte = packBuffer.get();
     int offset = currentByte & 0x7f;
@@ -222,9 +218,14 @@ public class Git {
       currentByte = packBuffer.get();
       offset = ((offset + 1) << 7) | (currentByte & 0x7f);
     }
-    int baseObjectPosition = objectStartPosition - offset;
-    byte[] baseObjectHash = positionObjectHashMap.get(baseObjectPosition);
-    ObjectType baseObjectType = hashTypeMap.get(baseObjectHash);
+    int baseObjectPosition = packObjectOffset - offset;
+    byte[] baseObjectHash = offsetSha1Map.get(baseObjectPosition);
+    return processDeltaObject(packObjectOffset, packBuffer, absolutePath, baseObjectHash);
+  }
+
+  private static byte[] processDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath, byte[] baseObjectHash)
+      throws IOException {
+    ObjectType baseObjectType = sha1TypeMap.get(baseObjectHash);
 
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
     byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
@@ -232,9 +233,10 @@ public class Git {
     byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
     byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);
     byte[] resultHash = createGitObject(absolutePath, objectPayload);
-    positionObjectHashMap.put(objectStartPosition, resultHash);
-    hashTypeMap.put(resultHash, baseObjectType);
+    offsetSha1Map.put(packObjectOffset, resultHash);
+    sha1TypeMap.put(resultHash, baseObjectType);
     return resultHash;
+
   }
 
   public static byte[] removeGitHeader(byte[] data) {
