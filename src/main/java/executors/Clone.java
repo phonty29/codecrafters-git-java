@@ -56,12 +56,12 @@ public class Clone {
 
   private void checkoutTree(Path targetDirectory, String treeHash) throws IOException {
     TreeObject[] treeObjects = getTreeObjects(treeHash);
-    for (TreeObject(Mode mode, String name, String hash) : treeObjects) {
-      Path targetPath = targetDirectory.resolve(name);
-      if (Mode.DIRECTORY.equals(mode)) {
-        checkoutTree(targetPath, hash);
-      } else if (Mode.isBlob(mode)) {
-        byte[] gitObject = Git.getGitObject(this.absolutePath, ByteUtils.hexToBytes(hash));
+    for (TreeObject entry : treeObjects) {
+      Path targetPath = targetDirectory.resolve(entry.name());
+      if (Mode.DIRECTORY.equals(entry.mode())) {
+        checkoutTree(targetPath, entry.hash());
+      } else if (Mode.isBlob(entry.mode())) {
+        byte[] gitObject = Git.getGitObject(this.absolutePath, ByteUtils.hexToBytes(entry.hash()));
         byte[] content = Git.removeGitHeader(gitObject);
         Files.createDirectories(targetDirectory);
         Files.write(targetPath, content);
