@@ -190,13 +190,8 @@ public class Git {
   private static byte[] processObject(PackObject packObject, ByteBuffer packBuffer,
       Path absolutePath) throws IOException {
     return switch (packObject.type()) {
-      case COMMIT, BLOB, TREE -> {
-        byte[] payload = createObjectPayload(packObject.type(), Zlib.decompressPackObject(packBuffer));
-        byte[] hash = createGitObject(absolutePath, payload);
-        offsetSha1Map.put(packObject.offset(), hash);
-        sha1TypeMap.put(hash, packObject.type());
-        yield hash;
-      }
+      case COMMIT, BLOB, TREE ->
+          saveObject(absolutePath, packObject.type(), Zlib.decompressPackObject(packBuffer), packObject.offset());
       case REF_DELTA -> processRefDeltaObject(packObject.offset(), packBuffer, absolutePath);
       case OFS_DELTA -> processObsDeltaObject(packObject.offset(), packBuffer, absolutePath);
       default -> throw new IllegalArgumentException("Object type is not supported: " + packObject.type());
@@ -231,12 +226,15 @@ public class Git {
     byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
     byte[] baseContent = removeGitHeader(baseObject);
     byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
-    byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);
-    byte[] resultHash = createGitObject(absolutePath, objectPayload);
-    offsetSha1Map.put(packObjectOffset, resultHash);
-    sha1TypeMap.put(resultHash, baseObjectType);
-    return resultHash;
+    return saveObject(absolutePath, baseObjectType, resultObject, packObjectOffset);
+  }
 
+  private static byte[] saveObject(Path absolutePath, ObjectType type, byte[] object, int offset) throws IOException {
+    byte[] objectPayload = createObjectPayload(type, object);
+    byte[] resultHash = createGitObject(absolutePath, objectPayload);
+    offsetSha1Map.put(offset, resultHash);
+    sha1TypeMap.put(resultHash, type);
+    return resultHash;
   }
 
   public static byte[] removeGitHeader(byte[] data) {
