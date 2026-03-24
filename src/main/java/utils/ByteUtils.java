@@ -7,14 +7,6 @@ import java.util.List;
 
 public class ByteUtils {
 
-  public static String bytesToHex(byte[] bytes) {
-    return HexFormat.of().formatHex(bytes);
-  }
-
-  public static byte[] hexToBytes(String hex) {
-    return HexFormat.of().parseHex(hex);
-  }
-
   public static List<byte[]> split(byte[] data, byte delimiter) {
     List<byte[]> result = new ArrayList<>();
     int from = 0;
@@ -35,14 +27,5 @@ public class ByteUtils {
     result.add(part);
 
     return result;
-  }
-
-  public static byte[] subarray(byte[] input, int from, int to) {
-    return Arrays.copyOfRange(input, from, to);
-  }
-
-
-  public static byte[] subarray(byte[] input, int from) {
-    return Arrays.copyOfRange(input, from, input.length);
   }
 }

@@ -1,8 +1,10 @@
-package executors;
+package commands;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.zip.DataFormatException;
 import struct.Mode;
@@ -36,10 +38,10 @@ public class LsTree implements Executor {
         String[] splitContent = new String(split.get(i)).split(" ");
         Mode mode = Mode.fromNumber(splitContent[0]);
         String fileName = splitContent[1];
-        byte[] hashBytes = ByteUtils.subarray(split.get(i + 1), 0, 20);
-        String hash = ByteUtils.bytesToHex(hashBytes);
+        byte[] hashBytes = Arrays.copyOfRange(split.get(i + 1), 0, 20);
+        String hash = HexFormat.of().formatHex(hashBytes);
         objects[i - 1] = new TreeObject(mode, fileName, hash);
-        split.set(i + 1, ByteUtils.subarray(split.get(i + 1), 20));
+        split.set(i + 1, Arrays.copyOfRange(split.get(i + 1), 20, split.get(i + 1).length));
         System.out.println(fileName);
       }
     } catch (IOException | DataFormatException e) {

@@ -133,7 +133,7 @@ public class Git {
     return objectPayload;
   }
 
-  public static byte[] getGitObject(Path targetPath, byte[] hash) {
+  public static byte[] readGitObject(Path targetPath, byte[] hash) {
     String sha1 = HexFormat.of().formatHex(hash);
     String objectDir = sha1.substring(0, 2);
     String objectFile = sha1.substring(2);
@@ -146,10 +146,6 @@ public class Git {
     }
   }
 
-  /**
-   * @param packBuffer - remote Git packfile buffer
-   * @return first commit hash
-   */
   public static byte[] processPackFile(Path absolutePath, ByteBuffer packBuffer) throws IOException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
@@ -208,7 +204,7 @@ public class Git {
     ObjectType refObjectType = hashTypeMap.get(baseObjectHash);
 
     byte[] refDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    byte[] baseObject = getGitObject(absolutePath, baseObjectHash);
+    byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
     byte[] baseContent = removeGitHeader(baseObject);
     byte[] resultObject = Delta.applyDelta(baseContent, refDeltaInstructions);
     byte[] objectPayload = createObjectPayload(refObjectType, resultObject);
@@ -231,7 +227,7 @@ public class Git {
     ObjectType baseObjectType = hashTypeMap.get(baseObjectHash);
 
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    byte[] baseObject = getGitObject(absolutePath, baseObjectHash);
+    byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
     byte[] baseContent = removeGitHeader(baseObject);
     byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
     byte[] objectPayload = createObjectPayload(baseObjectType, resultObject);

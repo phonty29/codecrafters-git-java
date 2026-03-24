@@ -1,4 +1,4 @@
-package executors;
+package commands;
 
 public interface Executor {
 

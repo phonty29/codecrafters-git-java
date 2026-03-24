@@ -1,7 +1,7 @@
-package executors;
+package commands;
 
 
-import client.GitClient;
+import proto.GitClient;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -15,7 +15,6 @@ import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
 import struct.TreeObject;
-import utils.ByteUtils;
 import utils.Git;
 import utils.Pkt;
 import utils.Zlib;
@@ -45,7 +44,7 @@ public class Clone {
       byte[] negotiationPayload = Pkt.createPktNegotiationPayload(headSha);
       ByteBuffer packBuffer = gitClient.getPackFile(negotiationPayload);
       byte[] firstCommitHash = Git.processPackFile(absolutePath, packBuffer);
-      byte[] firstCommitContent = Git.getGitObject(this.absolutePath, firstCommitHash);
+      byte[] firstCommitContent = Git.readGitObject(this.absolutePath, firstCommitHash);
       String treeHash = new String(firstCommitContent).split(ObjectType.TREE + " ")[1].split("\n")[0];
       checkoutTree(this.absolutePath, treeHash);
       System.out.println("Cloned repository to " + gitDir);
@@ -61,7 +60,8 @@ public class Clone {
       if (Mode.DIRECTORY.equals(entry.mode())) {
         checkoutTree(targetPath, entry.hash());
       } else if (Mode.isBlob(entry.mode())) {
-        byte[] gitObject = Git.getGitObject(this.absolutePath, ByteUtils.hexToBytes(entry.hash()));
+        byte[] blobHash = HexFormat.of().parseHex(entry.hash());
+        byte[] gitObject = Git.readGitObject(this.absolutePath, blobHash);
         byte[] content = Git.removeGitHeader(gitObject);
         Files.createDirectories(targetDirectory);
         Files.write(targetPath, content);

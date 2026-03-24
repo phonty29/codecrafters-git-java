@@ -1,10 +1,10 @@
-import executors.CatFile;
-import executors.Clone;
-import executors.CommitTree;
-import executors.HashObject;
-import executors.Init;
-import executors.LsTree;
-import executors.WriteTree;
+import commands.CatFile;
+import commands.Clone;
+import commands.CommitTree;
+import commands.HashObject;
+import commands.Init;
+import commands.LsTree;
+import commands.WriteTree;
 import java.nio.file.Path;
 
 public class Main {

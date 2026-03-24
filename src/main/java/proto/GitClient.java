@@ -1,4 +1,4 @@
-package client;
+package proto;
 
 import java.io.IOException;
 import java.net.URI;
