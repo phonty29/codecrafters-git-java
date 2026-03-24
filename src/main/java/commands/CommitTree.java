@@ -3,8 +3,9 @@ package commands;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.HexFormat;
-import utils.Git;
+import git.Git;
 
 public class CommitTree implements Executor {
 
@@ -34,7 +35,7 @@ public class CommitTree implements Executor {
     String header = String.format("commit %d\0", payload.getBytes(StandardCharsets.UTF_8).length);
     String content = header + payload;
     try {
-      byte[] sha1 = Git.createGitObject(content.getBytes(StandardCharsets.UTF_8));
+      byte[] sha1 = new Git(Path.of("./")).createGitObject(content.getBytes(StandardCharsets.UTF_8));
       System.out.println(HexFormat.of().formatHex(sha1));
     } catch (IOException e) {
       System.err.println(e.getMessage());

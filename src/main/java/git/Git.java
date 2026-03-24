@@ -1,4 +1,4 @@
-package utils;
+package git;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -7,30 +7,50 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.zip.DataFormatException;
 import struct.Mode;
 import struct.ObjectType;
 import struct.PackObject;
+import struct.TreeObject;
+import utils.Delta;
+import utils.Sha1;
+import utils.Zlib;
 
 public class Git {
 
-  private Path root;
-  private static final Map<byte[], ObjectType> sha1TypeMap = new HashMap<>();
-  private static final Map<Integer, byte[]> offsetSha1Map = new HashMap<>();
+  private final Path root;
+  private final Map<byte[], ObjectType> sha1TypeMap = new HashMap<>();
+  private final Map<Integer, byte[]> offsetSha1Map = new HashMap<>();
 
-  Git(Path root) {
+  public Git(Path root) {
     this.root = root;
   }
 
-  public static byte[] createBlob(Path readPath) throws IOException {
-    byte[] contentBytes = Files.readAllBytes(readPath);
+  public static byte[] removeGitHeader(byte[] data) {
+    int i = 0;
+    while (i < data.length && data[i] != 0) {
+      i++;
+    }
+    if (i == data.length) {
+      throw new IllegalStateException("Invalid git object (no header)");
+    }
+    int contentStart = i + 1;
+    return Arrays.copyOfRange(data, contentStart, data.length);
+  }
+
+  public Path getRoot() {
+    return this.root;
+  }
+
+  public byte[] createBlob(Path readPath) throws IOException {
+    byte[] contentBytes = Files.readAllBytes(root.resolve(readPath));
     byte size = (byte) contentBytes.length;
     byte[] headerBytes = ("blob " + size + '\0').getBytes(StandardCharsets.UTF_8);
     byte[] blobBytes = new byte[headerBytes.length + contentBytes.length];
@@ -39,30 +59,12 @@ public class Git {
     return createGitObject(blobBytes);
   }
 
-  public static byte[] createGitObject(byte[] content) throws IOException {
+  public byte[] createGitObject(byte[] content) throws IOException {
     byte[] hashBytes = Sha1.hash(content);
     String hash = HexFormat.of().formatHex(hashBytes);
     String objectDir = hash.substring(0, 2);
     String objectFile = hash.substring(2);
-    String writePath = ".git/objects/" + objectDir + "/" + objectFile;
-    byte[] compressedContent = Zlib.compress(content);
-
-    Path path = Paths.get(writePath);
-    Path parentDir = path.getParent();
-    if (parentDir != null && !Files.exists(parentDir)) {
-      Files.createDirectories(parentDir);
-    }
-    Files.createFile(path);
-    Files.write(path, compressedContent);
-    return hashBytes;
-  }
-
-  public static byte[] createGitObject(Path targetPath, byte[] content) throws IOException {
-    byte[] hashBytes = Sha1.hash(content);
-    String hash = HexFormat.of().formatHex(hashBytes);
-    String objectDir = hash.substring(0, 2);
-    String objectFile = hash.substring(2);
-    Path path = targetPath.resolve(".git/objects/" + objectDir + "/" + objectFile);
+    Path path = root.resolve(".git/objects/" + objectDir + "/" + objectFile);
     byte[] compressedContent = Zlib.compress(content);
 
     Path parentDir = path.getParent();
@@ -74,7 +76,44 @@ public class Git {
     return hashBytes;
   }
 
-  public static byte[] createTree(Path path) throws IOException {
+  public List<TreeObject> readTree(String treeSha) throws IOException, DataFormatException {
+    String objectDir = treeSha.substring(0, 2);
+    String objectFile = treeSha.substring(2);
+    Path path = root.resolve(".git/objects/" + objectDir + "/" + objectFile);
+    byte[] bytes = Files.readAllBytes(path);
+    byte[] decompressed = Zlib.decompressObject(bytes);
+    byte[] data = Git.removeGitHeader(decompressed);
+    List<TreeObject> result = new ArrayList<>();
+    int pos = 0;
+    while (pos < data.length) {
+      int space = findByte(data, pos, (byte) ' ');
+      String modeStr = new String(data, pos, space - pos);
+      Mode mode = Mode.fromNumber(modeStr);
+      pos = space + 1;
+      int nullByte = findByte(data, pos, (byte) 0);
+      String fileName = new String(data, pos, nullByte - pos);
+      pos = nullByte + 1;
+      byte[] shaBytes = Arrays.copyOfRange(data, pos, pos + 20);
+      String sha = HexFormat.of().formatHex(shaBytes);
+      pos += 20;
+      result.add(new TreeObject(mode, fileName, sha));
+    }
+    return result;
+  }
+
+  private int findByte(byte[] data, int start, byte target) {
+    for (int i = start; i < data.length; i++) {
+      if (data[i] == target) {
+        return i;
+      }
+    }
+    throw new IllegalStateException("Byte not found");
+  }
+
+  public byte[] createTree(Path path) throws IOException {
+    if (Objects.isNull(path)) {
+      path = root;
+    }
     if (Files.notExists(path) || !Files.isDirectory(path)) {
       throw new IllegalArgumentException(path + " is not a directory or doesn't exist");
     }
@@ -131,7 +170,7 @@ public class Git {
     return createGitObject(tree);
   }
 
-  public static byte[] createObjectPayload(ObjectType type, byte[] content) {
+  private byte[] createObjectPayload(ObjectType type, byte[] content) {
     byte[] objectHeader = String.format("%s %s\0", type.toString(), content.length).getBytes(StandardCharsets.UTF_8);
     byte[] objectPayload = new byte[objectHeader.length + content.length];
     System.arraycopy(objectHeader, 0, objectPayload, 0, objectHeader.length);
@@ -139,20 +178,16 @@ public class Git {
     return objectPayload;
   }
 
-  public static byte[] readGitObject(Path targetPath, byte[] hash) {
+  public byte[] readGitObject(byte[] hash) throws IOException, DataFormatException {
     String sha1 = HexFormat.of().formatHex(hash);
     String objectDir = sha1.substring(0, 2);
     String objectFile = sha1.substring(2);
-    Path path = targetPath.resolve(".git/objects/" + objectDir + "/" + objectFile);
-    try {
-      var bytes = Files.readAllBytes(path);
-      return Zlib.decompressObject(bytes);
-    } catch (IOException | DataFormatException e) {
-      throw new RuntimeException(e.getMessage());
-    }
+    Path path = root.resolve(".git/objects/" + objectDir + "/" + objectFile);
+    var bytes = Files.readAllBytes(path);
+    return Zlib.decompressObject(bytes);
   }
 
-  public static byte[] processPackFile(Path absolutePath, ByteBuffer packBuffer) throws IOException {
+  public byte[] processPackFile(ByteBuffer packBuffer) throws IOException, DataFormatException {
     byte[] magicBytes = new byte[8];
     packBuffer.get(magicBytes);
     if (!new String(magicBytes, StandardCharsets.UTF_8).contentEquals("0008NAK\n")) {
@@ -177,8 +212,8 @@ public class Git {
         objectSize |= (objectHeader & 0b0111_1111) << shift;
         shift += 7;
       }
-      PackObject packObject = new PackObject(objectType, objectStartPosition, objectSize);
-      byte[] objectHash = processObject(packObject, packBuffer, absolutePath);
+      PackObject packObject = new PackObject(objectType, objectStartPosition);
+      byte[] objectHash = processObject(packObject, packBuffer);
       if (firstCommitHash.length == 0 && objectType == ObjectType.COMMIT) {
         firstCommitHash = objectHash;
       }
@@ -187,26 +222,24 @@ public class Git {
     return firstCommitHash;
   }
 
-  private static byte[] processObject(PackObject packObject, ByteBuffer packBuffer,
-      Path absolutePath) throws IOException {
+  private byte[] processObject(PackObject packObject, ByteBuffer packBuffer) throws IOException, DataFormatException {
     return switch (packObject.type()) {
-      case COMMIT, BLOB, TREE ->
-          saveObject(absolutePath, packObject.type(), Zlib.decompressPackObject(packBuffer), packObject.offset());
-      case REF_DELTA -> processRefDeltaObject(packObject.offset(), packBuffer, absolutePath);
-      case OFS_DELTA -> processObsDeltaObject(packObject.offset(), packBuffer, absolutePath);
+      case COMMIT, BLOB, TREE -> saveObject(Zlib.decompressPackObject(packBuffer), packObject);
+      case REF_DELTA -> processRefDeltaObject(packObject.offset(), packBuffer);
+      case OFS_DELTA -> processObsDeltaObject(packObject.offset(), packBuffer);
       default -> throw new IllegalArgumentException("Object type is not supported: " + packObject.type());
     };
   }
 
-  private static byte[] processRefDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath)
-      throws IOException {
+  private byte[] processRefDeltaObject(int packObjectOffset, ByteBuffer packBuffer)
+      throws IOException, DataFormatException {
     byte[] baseObjectHash = new byte[20];
     packBuffer.get(baseObjectHash);
-    return processDeltaObject(packObjectOffset, packBuffer, absolutePath, baseObjectHash);
+    return processDeltaObject(packObjectOffset, packBuffer, baseObjectHash);
   }
 
-  private static byte[] processObsDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath)
-      throws IOException {
+  private byte[] processObsDeltaObject(int packObjectOffset, ByteBuffer packBuffer)
+      throws IOException, DataFormatException {
     byte currentByte = packBuffer.get();
     int offset = currentByte & 0x7f;
     while ((currentByte & 0x80) != 0) {
@@ -215,37 +248,25 @@ public class Git {
     }
     int baseObjectPosition = packObjectOffset - offset;
     byte[] baseObjectHash = offsetSha1Map.get(baseObjectPosition);
-    return processDeltaObject(packObjectOffset, packBuffer, absolutePath, baseObjectHash);
+    return processDeltaObject(packObjectOffset, packBuffer, baseObjectHash);
   }
 
-  private static byte[] processDeltaObject(int packObjectOffset, ByteBuffer packBuffer, Path absolutePath, byte[] baseObjectHash)
-      throws IOException {
+  private byte[] processDeltaObject(int offset, ByteBuffer packBuffer, byte[] baseObjectHash)
+      throws IOException, DataFormatException {
     ObjectType baseObjectType = sha1TypeMap.get(baseObjectHash);
-
     byte[] obsDeltaInstructions = Zlib.decompressPackObject(packBuffer);
-    byte[] baseObject = readGitObject(absolutePath, baseObjectHash);
+    byte[] baseObject = readGitObject(baseObjectHash);
     byte[] baseContent = removeGitHeader(baseObject);
-    byte[] resultObject = Delta.applyDelta(baseContent, obsDeltaInstructions);
-    return saveObject(absolutePath, baseObjectType, resultObject, packObjectOffset);
+    byte[] resultContent = Delta.applyDelta(baseContent, obsDeltaInstructions);
+    PackObject basePackObject = new PackObject(baseObjectType, offset);
+    return saveObject(resultContent, basePackObject);
   }
 
-  private static byte[] saveObject(Path absolutePath, ObjectType type, byte[] object, int offset) throws IOException {
-    byte[] objectPayload = createObjectPayload(type, object);
-    byte[] resultHash = createGitObject(absolutePath, objectPayload);
-    offsetSha1Map.put(offset, resultHash);
-    sha1TypeMap.put(resultHash, type);
+  private byte[] saveObject(byte[] content, PackObject packObject) throws IOException {
+    byte[] objectPayload = createObjectPayload(packObject.type(), content);
+    byte[] resultHash = createGitObject(objectPayload);
+    offsetSha1Map.put(packObject.offset(), resultHash);
+    sha1TypeMap.put(resultHash, packObject.type());
     return resultHash;
-  }
-
-  public static byte[] removeGitHeader(byte[] data) {
-    int i = 0;
-    while (i < data.length && data[i] != 0) {
-      i++;
-    }
-    if (i == data.length) {
-      throw new IllegalStateException("Invalid git object (no header)");
-    }
-    int contentStart = i + 1;
-    return Arrays.copyOfRange(data, contentStart, data.length);
   }
 }

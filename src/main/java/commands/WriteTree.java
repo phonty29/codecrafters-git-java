@@ -1,11 +1,10 @@
 package commands;
 
-import static utils.Git.createTree;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HexFormat;
+import git.Git;
 
 public class WriteTree implements Executor {
 
@@ -13,7 +12,7 @@ public class WriteTree implements Executor {
   public void execute() {
     try {
       Path path = Paths.get("./");
-      byte[] sha1 = createTree(path);
+      byte[] sha1 = new Git(path).createTree(path);
       System.out.println(HexFormat.of().formatHex(sha1));
     } catch (IOException e) {
       System.err.println(e.getMessage());

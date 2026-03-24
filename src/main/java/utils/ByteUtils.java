@@ -1,8 +1,6 @@
 package utils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.List;
 
 public class ByteUtils {
