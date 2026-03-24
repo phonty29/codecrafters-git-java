@@ -16,7 +16,7 @@ public class GitClient {
     this.repoUrl = repoUrl;
   }
 
-  public String getRemoteRefs() throws IOException {
+  public String fetchRefs() throws IOException {
     try (HttpClient client = HttpClient.newHttpClient()) {
       String ENDPOINT = "/info/refs?service=git-upload-pack";
       HttpRequest request = HttpRequest
@@ -35,7 +35,7 @@ public class GitClient {
     }
   }
 
-  public ByteBuffer getPackFile(byte[] negotiationPayload) throws IOException {
+  public ByteBuffer fetchPackfile(byte[] negotiationPayload) throws IOException {
     try (HttpClient client = HttpClient.newHttpClient()) {
       String ENDPOINT = "/git-upload-pack";
       HttpRequest request = HttpRequest

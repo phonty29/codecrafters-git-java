@@ -33,10 +33,10 @@ public class Clone {
   public void execute() {
     try {
       new Init(git.getRoot()).execute();
-      String refAdvertisement = gitClient.getRemoteRefs();
+      String refAdvertisement = gitClient.fetchRefs();
       String headSha = Pkt.retrieveHeadShaFromPktFormattedRefs(refAdvertisement);
       byte[] negotiationPayload = Pkt.createPktNegotiationPayload(headSha);
-      ByteBuffer packBuffer = gitClient.getPackFile(negotiationPayload);
+      ByteBuffer packBuffer = gitClient.fetchPackfile(negotiationPayload);
       byte[] firstCommitHash = git.processPackFile(packBuffer);
       byte[] firstCommitContent = git.readGitObject(firstCommitHash);
       String treeHash = new String(firstCommitContent).split(ObjectType.TREE + " ")[1].split("\n")[0];
